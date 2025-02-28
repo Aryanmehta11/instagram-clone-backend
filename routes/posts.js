@@ -55,4 +55,31 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+
+// ✅ Update Post (with optional Cloudinary Image Update)
+router.put("/:id", upload.single("image"), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // If a new image is uploaded, delete the old one from Cloudinary
+    if (req.file) {
+      const publicId = post.image.split("/").pop().split(".")[0]; // Extract filename
+      await cloudinary.uploader.destroy(publicId); // Delete old image
+      post.image = req.file.path; // Update with new Cloudinary URL
+    }
+
+    // Update fields
+    post.title = title || post.title;
+    post.description = description || post.description;
+
+    await post.save();
+    res.status(200).json(post);
+  } catch (err) {
+    console.error("Update Error:", err);
+    res.status(500).json({ error: err.message || "Internal Server Error" });
+  }
+});
+
 module.exports = router;
